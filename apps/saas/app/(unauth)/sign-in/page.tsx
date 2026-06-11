@@ -1,7 +1,6 @@
 "use client";
 
-// Email-collection step. Mirrors the maana-data /login pattern:
-// the code step lives at its own URL (/sign-in/otp?e=<email>) so a
+// Email-collection step. The code step lives at its own URL (/sign-in/otp?e=<email>) so a
 // reload doesn't drop the email and the back button works the way
 // the user expects.
 

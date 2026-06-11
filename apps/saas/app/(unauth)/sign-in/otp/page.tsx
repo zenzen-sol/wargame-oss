@@ -1,8 +1,7 @@
 "use client";
 
 // Code-entry step. The email lives in the URL (`?e=<email>`) so a
-// reload, share, or back-nav doesn't drop it. Mirrors the maana-data
-// /otp pattern:
+// reload, share, or back-nav doesn't drop it. Behaviors:
 //   - real OTP slot input (input-otp) with autoFocus + numeric-only
 //   - auto-submit when the user enters the last digit
 //   - on error, reset the slots so they can try again without
