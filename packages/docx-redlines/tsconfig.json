@@ -1,0 +1,7 @@
+{
+  "extends": "@wargame-esq/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["bun-types"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "experiments/**/*.ts"]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "wargame-esq",
+  "private": true,
+  "packageManager": "bun@1.3.5",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "bun scripts/setup.ts",
+    "dev": "scripts/dev.sh",
+    "build": "turbo build",
+    "lint": "biome lint .",
+    "typecheck": "turbo typecheck",
+    "format": "biome format --write .",
+    "db:link": "bunx supabase --workdir packages/db link",
+    "db:push": "bunx supabase --workdir packages/db db push",
+    "db:reset": "bunx supabase --workdir packages/db db reset --linked",
+    "db:config": "bunx supabase --workdir packages/db config push",
+    "db:types": "bunx supabase --workdir packages/db gen types typescript --linked > apps/saas/types/database.types.ts && cp apps/saas/types/database.types.ts apps/workflows/types/database.types.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "agent-tail": "^0.4.0",
+    "supabase": "^2.98.2",
+    "turbo": "^2.9.14"
+  }
+}

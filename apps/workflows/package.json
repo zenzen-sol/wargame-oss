@@ -1,0 +1,35 @@
+{
+  "name": "@wargame-esq/workflows",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "agent-tail wrap workflows --log-dir ../../tmp/logs -- next dev --turbopack -p ${WORKFLOWS_PORT:-3001}",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@langfuse/otel": "^5.2.0",
+    "@langfuse/tracing": "^5.2.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-trace-node": "^2.7.1",
+    "@sentry/nextjs": "^10.53.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "@wargame-esq/agents": "workspace:*",
+    "@wargame-esq/extraction": "workspace:*",
+    "ai": "^6.0.174",
+    "next": "^16.2.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "workflow": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@wargame-esq/tsconfig": "workspace:*",
+    "agent-tail": "^0.4.0",
+    "agent-tail-core": "^0.4.0",
+    "typescript": "^5"
+  }
+}

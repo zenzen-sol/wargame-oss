@@ -1,0 +1,14 @@
+{
+  "extends": "@wargame-esq/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

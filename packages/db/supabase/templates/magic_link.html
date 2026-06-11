@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your Wargame sign-in code</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #0a0a0a;
+      color: #fafafa;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      style="background: #0a0a0a; padding: 48px 16px;"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="480"
+            cellspacing="0"
+            cellpadding="0"
+            style="
+              max-width: 480px;
+              background: #141414;
+              border: 1px solid #262626;
+              border-radius: 12px;
+              padding: 40px 32px;
+            "
+          >
+            <tr>
+              <td>
+                <h1
+                  style="
+                    margin: 0 0 8px;
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: #fafafa;
+                  "
+                >
+                  Sign in to Wargame
+                </h1>
+                <p
+                  style="
+                    margin: 0 0 32px;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    color: #a3a3a3;
+                  "
+                >
+                  Enter this code in the open tab to finish signing in. The
+                  code expires in 20 minutes.
+                </p>
+
+                <div
+                  style="
+                    margin: 0 0 32px;
+                    padding: 24px;
+                    background: #0a0a0a;
+                    border: 1px solid #262626;
+                    border-radius: 8px;
+                    text-align: center;
+                    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Monaco,
+                      Consolas, monospace;
+                    font-size: 32px;
+                    font-weight: 600;
+                    letter-spacing: 0.4em;
+                    color: #fafafa;
+                  "
+                >
+                  {{ .Token }}
+                </div>
+
+                <p
+                  style="
+                    margin: 0 0 12px;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    color: #737373;
+                  "
+                >
+                  Didn't request this? You can safely ignore this email — no
+                  one can sign in without the code.
+                </p>
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    color: #737373;
+                  "
+                >
+                  Wargame · {{ .Email }}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

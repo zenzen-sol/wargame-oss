@@ -1,0 +1,36 @@
+{
+  "name": "@wargame-esq/extraction",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./docx": "./src/docx-to-markdown.ts",
+    "./extract": "./src/extract.ts",
+    "./schema": "./src/schema.ts",
+    "./clean": "./src/clean.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.5",
+    "ai": "^6.0.0",
+    "fflate": "^0.8.2",
+    "mammoth": "^1.10.0",
+    "title-case": "^4.3.2",
+    "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22",
+    "@types/turndown": "^5.0.5",
+    "@wargame-esq/tsconfig": "workspace:*",
+    "typescript": "^5"
+  }
+}

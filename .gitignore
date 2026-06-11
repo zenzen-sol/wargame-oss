@@ -1,0 +1,40 @@
+# dependencies
+node_modules
+
+# next.js
+.next
+
+# turbo
+.turbo
+
+# build
+dist
+*.tsbuildinfo
+
+# env
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# supabase CLI scratch (linked-project state, dumps, etc.)
+packages/db/supabase/.temp/
+packages/db/supabase/.branches/
+
+# misc
+.DS_Store
+tmp/
+
+# turbopack/swc cache
+**/.swc/
+
+# local-only agent workspace (maintainer's private notes + tooling;
+# not part of the project)
+brain/
+CLAUDE.md
+AGENTS.md
+.claude/
+.codex/
+.agents/
+skills-lock.json

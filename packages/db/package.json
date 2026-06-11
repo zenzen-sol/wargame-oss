@@ -1,0 +1,6 @@
+{
+  "name": "@wargame-esq/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Supabase project root for wargame-esq. Owns the schema migrations, RLS policies, auth config, and email templates. Consumers import nothing from here at runtime — apps go through @supabase/supabase-js / @supabase/ssr against the live Postgres + Storage. The contents under ./supabase/ are managed by the Supabase CLI; root scripts run the CLI from this directory."
+}

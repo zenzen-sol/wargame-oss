@@ -1,0 +1,525 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Streamdown stamps Tailwind utility classes onto the elements it
+ * renders (e.g. `list-inside list-disc` on `<ul>`, `py-1 [&>p]:inline`
+ * on `<li>`). Tailwind v4 doesn't scan `node_modules/` by default, so
+ * those classes are emitted as DOM strings but generate no CSS — the
+ * symptom was a `<ul>` with bullets on their own line above each item,
+ * and lists with no bullets at all (Anthropic memo + argument turns
+ * 2026-05-17). The `@source` directive tells Tailwind to scan the
+ * Streamdown package and generate the matching utilities. */
+@source "../node_modules/streamdown";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: "Source Serif 4", ui-serif, Georgia, serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-selected: var(--selected);
+  /* Picker overlay tones — neutral, deliberately decoupled from
+   * --accent so saturated brand accents (our blue) don't bleed into
+   * row hover/selection states. Use `bg-pick-hover` /
+   * `bg-pick-selected` in any list/picker primitive that wants the
+   * canonical fluidfunctionalism behaviour without inheriting the
+   * theme's accent color. */
+  --color-pick-hover: var(--pick-hover);
+  --color-pick-selected: var(--pick-selected);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-team-red: var(--team-red);
+  --color-team-blue: var(--team-blue);
+  --color-team-green: var(--team-green);
+  --color-border-illustration: var(--border-illustration);
+  /* Scan-line + hue-rotate animations for the file-upload dropzone
+   * illustration. Combined comma-separated so a single element can
+   * carry both — required when the element also has mix-blend-mode
+   * (a child carrying `filter` would create an isolated render
+   * layer that breaks the parent's blend with the backdrop). */
+  --animate-scan: scan 3s infinite;
+  --animate-scan-hue: scan 3s infinite, hue-rotate 4s infinite;
+  @keyframes scan {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  @keyframes hue-rotate {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(360deg);
+    }
+  }
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  @keyframes shimmer {
+    0% {
+      background-position: 0% 0;
+    }
+    100% {
+      background-position: 100% 0;
+    }
+  }
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(98.5% 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(62.3% 0.214 259.815);
+  --accent-foreground: oklch(0.97 0 0);
+  /* Neutral "selected" tone used by the fluidfunctionalism
+   * checkbox/radio primitives in light mode (`bg-selected/50`).
+   * In dark mode the canonical class falls through to
+   * `bg-accent/40`, but we keep --selected defined there too for
+   * consistency. */
+  --selected: oklch(0.205 0 0);
+  /* Picker tones — see @theme inline comment. Pre-mixed so the
+   * class names don't need /<alpha> modifiers. */
+  --pick-hover: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --pick-selected: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(72.838% 0.00008 271.152);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --team-blue: var(--color-blue-400);
+  --team-red: var(--color-red-500);
+  --team-green: var(--color-emerald-500);
+  --pick-hover-opaque: color-mix(in oklab, var(--foreground) 6%, var(--background));
+  --pick-selected-opaque: color-mix(in oklab, var(--foreground) 12%, var(--background));
+  --border-illustration: color-mix(in oklab, oklch(9% 0 0) 7.5%, transparent);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(27.4% 0.006 286.033);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(62.3% 0.214 259.815);
+  --accent-foreground: oklch(0.97 0 0);
+  --selected: oklch(0.985 0 0);
+  /* Light-on-dark needs a touch less alpha to read as "subtle." */
+  --pick-hover: color-mix(in oklab, var(--foreground) 6%, transparent);
+  --pick-selected: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --team-blue: var(--color-blue-600);
+  --team-red: var(--color-red-500);
+  --team-green: var(--color-emerald-500);
+  --pick-hover-opaque: color-mix(in oklab, var(--foreground) 6%, var(--background));
+  --pick-selected-opaque: color-mix(in oklab, var(--foreground) 12%, var(--background));
+  --border-illustration: color-mix(in oklab, oklch(100% 0 0) 7.5%, transparent);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /* Thin scrollbars on a transparent track. `scrollbar-color` is
+   * inherited (so setting it on `:root` reaches every descendant) but
+   * `scrollbar-width` is NOT — it only applies to the element it's
+   * declared on, so we need `*` to hit every scroll container.
+   * Components can opt out with the `no-scrollbar` utility from
+   * shadcn/tailwind.css. Ported from augustus-omni. */
+  * {
+    scrollbar-width: thin;
+  }
+  :root {
+    scrollbar-color: var(--color-zinc-400) transparent;
+  }
+  .dark {
+    scrollbar-color: var(--color-zinc-600) transparent;
+  }
+}
+
+/* docx-preview paints `.docx-wrapper` with its own mid-gray bg via
+ * <style> tags injected into `.docx-host`. Those rules are unlayered
+ * and so win over anything inside `@layer base` no matter the
+ * specificity — keep this override outside any layer. */
+.docx-host .docx-wrapper {
+  background: var(--color-zinc-400);
+}
+.dark .docx-host .docx-wrapper {
+  background: var(--color-zinc-400);
+}
+
+/* Tracked-change polish for docx-preview's <ins> / <del> wrappers.
+ *
+ * docx-preview renders Word's `<w:ins>` as a real <ins> and
+ * `<w:del>` as a real <del>. The inner runs carry our own
+ * <w:color> (red for delete, blue for insert), so the *text*
+ * paints correctly. But the wrapper element's text-decoration
+ * (strike / underline) inherits its color from `currentColor`
+ * — the wrapper's color, which is the surrounding paragraph's
+ * color (black). Result: red deleted text with a BLACK strike,
+ * which reads as a smudge. Same trick for <ins>: the underline
+ * should match the blue text.
+ *
+ * Fix is one declaration each: set color on the wrapper so the
+ * decoration inherits it, plus an explicit text-decoration so
+ * the line lands at uniform thickness. Inner <w:color> still
+ * wins on the actual text runs (it's more specific) — this only
+ * paints the decoration line.
+ *
+ * Line-height: docx-preview's <ins> wrapper picks up extra
+ * leading vs <del> from Word's tracked-change defaults. Pin
+ * both to `inherit` so they read as a single rhythm within the
+ * paragraph. */
+.docx-host del,
+.docx-host .docx-del {
+  color: #ff0000;
+  text-decoration: line-through;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+}
+.docx-host ins,
+.docx-host .docx-ins {
+  color: #0000ff;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+}
+
+/* ----------------------------------------------------------------
+ * Fade masks for scroll regions.
+ *
+ * `.fade-mask-y` paints a top + bottom gradient that fades the
+ * content into transparency, hiding the hard edge where scrolled
+ * content gets clipped. The fade size is parameterizable per-element
+ * via the --fade-top-size / --fade-bottom-size custom properties.
+ *
+ * Both edges are always faded — no JS scroll listener. The trade
+ * is "we always fade the top even at scroll-top", which reads as a
+ * deliberate visual frame rather than a bug. Cheaper than wiring
+ * IntersectionObserver state into every scroll container.
+ * ---------------------------------------------------------------- */
+@property --fade-top-size {
+  syntax: "<length>";
+  initial-value: 1.5rem;
+  inherits: false;
+}
+@property --fade-bottom-size {
+  syntax: "<length>";
+  initial-value: 1.5rem;
+  inherits: false;
+}
+
+.fade-mask-y {
+  --_top: var(--fade-top-size, 1.5rem);
+  --_bottom: var(--fade-bottom-size, 1.5rem);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black var(--_top),
+    black calc(100% - var(--_bottom)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black var(--_top),
+    black calc(100% - var(--_bottom)),
+    transparent 100%
+  );
+}
+
+.shimmer-text {
+  color: transparent;
+  background: linear-gradient(
+    90deg,
+    #a3a3a3 0%,
+    #a3a3a3 35%,
+    #525252 50%,
+    #a3a3a3 65%,
+    #a3a3a3 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Companion to the <Shimmer> component (ai-elements/shimmer.tsx).
+ * Inline `background-image` and `--shimmer-spread` come from props;
+ * this rule supplies the animation. Replaces a motion.create-driven
+ * version that silently failed to start on any instance — confirmed
+ * via the /dev/shimmer-test harness on 2026-05-17. */
+@keyframes ai-shimmer-sweep {
+  from {
+    background-position: 100% center, 100% center;
+  }
+  to {
+    background-position: 0% center, 0% center;
+  }
+}
+
+.ai-shimmer {
+  animation: ai-shimmer-sweep var(--shimmer-duration, 2s) linear infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * hit-area — Tailwind v4 utilities for expanding the clickable area of a
+ *   small element without affecting its visual layout. Adds an absolutely-
+ *   positioned `::before` pseudo with negative inset (driven by CSS vars),
+ *   inheriting pointer-events. Source: https://bazza.dev/craft/2026/hit-area
+ *
+ *   Usage:
+ *     hit-area-3      → 12px on all sides
+ *     hit-area-x-2    → 8px left/right only
+ *     hit-area-l-4    → 16px on the left only
+ *     hit-area-debug  → visualizes the hit zone
+ * ------------------------------------------------------------------------ */
+
+@utility hit-area-debug {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+    @apply border border-dashed border-blue-500;
+    @apply bg-blue-500/10;
+  }
+
+  &:hover::before {
+    @apply border border-dashed border-green-500;
+    @apply bg-green-500/10;
+  }
+}
+
+@utility hit-area {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-* {
+  position: relative;
+  --hit-area-t: --spacing(--value(number) * -1);
+  --hit-area-t: calc(--value([*]) * -1);
+  --hit-area-b: --spacing(--value(number) * -1);
+  --hit-area-b: calc(--value([*]) * -1);
+  --hit-area-l: --spacing(--value(number) * -1);
+  --hit-area-l: calc(--value([*]) * -1);
+  --hit-area-r: --spacing(--value(number) * -1);
+  --hit-area-r: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-l-* {
+  position: relative;
+  --hit-area-l: --spacing(--value(number) * -1);
+  --hit-area-l: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-r-* {
+  position: relative;
+  --hit-area-r: --spacing(--value(number) * -1);
+  --hit-area-r: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-t-* {
+  position: relative;
+  --hit-area-t: --spacing(--value(number) * -1);
+  --hit-area-t: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-b-* {
+  position: relative;
+  --hit-area-b: --spacing(--value(number) * -1);
+  --hit-area-b: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-x-* {
+  position: relative;
+  --hit-area-l: --spacing(--value(number) * -1);
+  --hit-area-l: calc(--value([*]) * -1);
+  --hit-area-r: --spacing(--value(number) * -1);
+  --hit-area-r: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
+
+@utility hit-area-y-* {
+  position: relative;
+  --hit-area-t: --spacing(--value(number) * -1);
+  --hit-area-t: calc(--value([*]) * -1);
+  --hit-area-b: --spacing(--value(number) * -1);
+  --hit-area-b: calc(--value([*]) * -1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: var(--hit-area-t, 0px);
+    right: var(--hit-area-r, 0px);
+    bottom: var(--hit-area-b, 0px);
+    left: var(--hit-area-l, 0px);
+    pointer-events: inherit;
+  }
+}
