@@ -6,9 +6,11 @@ there to a production deployment on Vercel.
 ## What you need
 
 - [Bun](https://bun.sh) 1.3+
-- A hosted [Supabase](https://supabase.com) project (free tier works). The
-  app targets hosted Supabase only; the local `supabase start` Docker stack
-  is not supported.
+- [Docker](https://docs.docker.com/get-docker/) (Docker Desktop, OrbStack,
+  or Colima). The default setup runs Supabase locally in Docker; no
+  Supabase account is needed. To use a hosted
+  [supabase.com](https://supabase.com) project instead, see "Hosted
+  Supabase" below.
 - An OpenAI or Anthropic API key for local development. In production, users
   bring their own keys (see "BYOK" below).
 - For production email sign-in: a [Resend](https://resend.com) account with a
@@ -24,7 +26,7 @@ there to a production deployment on Vercel.
    bun install
    ```
 
-2. Run the setup assistant:
+2. With Docker running, run the setup assistant:
 
    ```bash
    bun run setup
@@ -32,34 +34,47 @@ there to a production deployment on Vercel.
 
    It creates the three `.env.local` files from their examples, generates
    the app secrets (writing the must-match pairs to both apps in one step,
-   so they cannot drift), prompts you for the Supabase credentials and an
-   LLM key, and finishes with a doctor pass that pings your Supabase
-   project. It is idempotent: re-running only fills in blanks, and
+   so they cannot drift), starts the local Supabase stack (first run
+   downloads the Docker images), applies the schema, writes every Supabase
+   env value automatically, prompts for an LLM key, and finishes with a
+   doctor pass. It is idempotent: re-running only fills in blanks, and
    `bun run setup --check` runs just the doctor.
 
-3. Apply the schema. Link the repo to your Supabase project, then run the
-   one-shot init migration in the Supabase SQL editor:
-
-   ```bash
-   bun db:link
-   ```
-
-   Open the SQL editor in the Supabase dashboard and run the contents of
-   `packages/db/supabase/migrations/*_init.sql`.
-
-4. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
+3. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
    default) routes OTPs into a database table instead of email. Navigate
-   to `http://localhost:3000/api/dev/sign-in` to get a session.
+   to `http://localhost:3010/api/dev/sign-in` to get a session.
 
-5. Run it:
+4. Run it:
 
    ```bash
    bun dev
    ```
 
-   This starts `apps/saas` and `apps/workflows` together. The ports are
-   pinned by `scripts/dev.sh` because `WORKFLOW_TRIGGER_URL` in the saas env
-   is the only thing telling saas where to find workflows.
+   This starts `apps/saas` (port 3010) and `apps/workflows` (port 3011)
+   together. The ports are pinned by `scripts/dev.sh` because
+   `WORKFLOW_TRIGGER_URL` in the saas env is the only thing telling saas
+   where to find workflows.
+
+   Supabase Studio for the local stack is at http://127.0.0.1:54323.
+   Stop the stack with `bunx supabase --workdir packages/db stop` (data
+   survives in a Docker volume).
+
+## Hosted Supabase (optional)
+
+To develop against a hosted supabase.com project instead of Docker, run:
+
+```bash
+bun run setup --hosted
+```
+
+It prompts for the project's credentials (the prompts say where each value
+lives in the dashboard). Then apply the schema: `bun db:link`, and run the
+contents of `packages/db/supabase/migrations/*_init.sql` in the Supabase
+SQL editor. Production deployments always use a hosted project.
+
+The setup assistant never silently switches an env between local and
+hosted: if your env points at a hosted project, plain `bun run setup`
+leaves it alone and tells you how to switch.
 
 ## The three secrets that must match
 
@@ -137,3 +152,10 @@ and the SDKs no-op.
   bypass, and `next build` always runs as production. Set
   `DEV_AUTH_BYPASS=0` in `apps/saas/.env.local` before building locally.
   Vercel deploys never hit this because the variable is not set there.
+- **`supabase start` fails with "port is already allocated."** Another
+  project's local Supabase stack is running. Stop it with
+  `supabase stop --project-id <id>` (the error names the id), or change
+  this project's ports in `packages/db/supabase/config.toml`.
+- **Local stack got wiped or keys changed.** Re-run `bun run setup`; in
+  local mode it refreshes localhost-pointing env values from the running
+  stack and re-applies any pending migrations.

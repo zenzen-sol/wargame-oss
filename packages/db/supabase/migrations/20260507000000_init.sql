@@ -414,9 +414,9 @@ create policy project_document_versions_owner_delete on project_document_version
 -- The bucket itself is created by hand in the dashboard (or via the CLI);
 -- the policies below gate per-user access to objects when read by the
 -- authenticated role.
-insert into storage.buckets (id, name, public)
-values ('project-files', 'project-files', false)
-on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('project-files', 'project-files', false, 1048576)
+on conflict (id) do update set file_size_limit = excluded.file_size_limit;
 
 create policy "project-files: owner can read"
   on storage.objects for select to authenticated
@@ -829,9 +829,6 @@ create trigger projects_owner_limit_trigger
   before insert on projects
   for each row execute function enforce_project_limit();
 
--- Storage bucket file_size_limit on `project-files` is set to
--- 1_048_576 (1 MB). Not in this file because storage.buckets is
--- managed via the Supabase Storage API, not regular SQL — the
--- limit is set with:
---   update storage.buckets set file_size_limit = 1048576
---     where id = 'project-files';
+-- Storage bucket file_size_limit on `project-files` (1 MB) is set
+-- in the bucket insert above; hosted projects created before this
+-- was inlined had it applied via the Storage API.
