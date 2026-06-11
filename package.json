@@ -22,7 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "agent-tail": "^0.4.0",
-    "supabase": "^2.98.2",
+    "supabase": "^2.105.0",
     "turbo": "^2.9.14"
   }
 }
