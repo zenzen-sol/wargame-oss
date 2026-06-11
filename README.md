@@ -48,13 +48,14 @@ The short version:
 
 ```bash
 bun install
-bun run setup   # generates secrets, prompts for Supabase + LLM creds
+bun run setup   # starts local Supabase in Docker, wires up env + secrets
 bun dev
 ```
 
 `bun dev` runs the product app and the workflows app together. Local
-development needs a free Supabase project and one LLM API key; it does not
-need an email provider or any observability accounts.
+development needs Docker (the setup assistant runs Supabase locally and
+wires everything up) and one LLM API key; it does not need a Supabase
+account, an email provider, or any observability accounts.
 
 ## Run limits
 

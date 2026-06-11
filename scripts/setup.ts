@@ -1,16 +1,21 @@
 #!/usr/bin/env bun
 // First-run setup: creates the three .env.local files, generates the
-// app secrets so the must-match pairs match by construction, prompts
-// for the Supabase + LLM credentials that can't be generated, and
-// finishes with a doctor pass that verifies the invariants the apps
-// fail silently without.
+// app secrets so the must-match pairs match by construction, points
+// the apps at a Supabase instance, and finishes with a doctor pass
+// that verifies the invariants the apps fail silently without.
 //
-//   bun run setup          # full flow (idempotent; only fills blanks)
-//   bun run setup --check  # doctor only, no writes
+//   bun run setup           # local Supabase via Docker (the default):
+//                           #   starts the stack, applies migrations,
+//                           #   writes every env value automatically
+//   bun run setup --hosted  # hosted Supabase: prompts for credentials
+//   bun run setup --check   # doctor only, no writes
 //
-// Re-running never overwrites a non-empty value.
+// Re-running never overwrites a non-empty value, with one exception:
+// local mode refreshes Supabase values that already point at
+// localhost (the stack's keys can change after `supabase stop`).
 
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -61,6 +66,10 @@ function setIfBlank(file: string, key: string, value: string): boolean {
   if (current) return false;
   upsertEnv(file, key, value);
   return true;
+}
+
+function isLocalUrl(url: string): boolean {
+  return url.includes("127.0.0.1") || url.includes("localhost");
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +140,106 @@ async function promptIfBlank(
 }
 
 // ---------------------------------------------------------------------------
+// local Supabase provisioning
+// ---------------------------------------------------------------------------
+
+function sbCli(
+  args: string[],
+  opts: { capture?: boolean } = {},
+): { ok: boolean; stdout: string } {
+  const res = spawnSync(
+    "bunx",
+    ["supabase", "--workdir", "packages/db", ...args],
+    {
+      cwd: ROOT,
+      stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+      encoding: "utf8",
+    },
+  );
+  return { ok: res.status === 0, stdout: res.stdout ?? "" };
+}
+
+function pickKey(obj: Record<string, unknown>, ...names: string[]): string {
+  for (const n of names) {
+    const v = obj[n];
+    if (typeof v === "string" && v) return v;
+  }
+  return "";
+}
+
+async function provisionLocal(): Promise<void> {
+  // Refuse to silently flip an env that points at a hosted project.
+  const currentUrl = readEnv(SAAS).get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
+  if (currentUrl && !isLocalUrl(currentUrl)) {
+    console.log(
+      `\nYour env points at a hosted Supabase project (${currentUrl}).
+Keeping it. To switch to the local stack, clear the Supabase
+values in apps/*/.env.local and re-run; to stay hosted, use
+\`bun run setup --hosted\`.`,
+    );
+    return;
+  }
+
+  // Docker is the only hard prerequisite for the local stack.
+  const docker = spawnSync("docker", ["info"], { stdio: "ignore" });
+  if (docker.status !== 0) {
+    console.log(
+      "\nDocker is not running. The default setup runs Supabase locally" +
+        "\nin Docker — start Docker Desktop / OrbStack / Colima and re-run," +
+        "\nor use `bun run setup --hosted` with a supabase.com project.",
+    );
+    process.exit(1);
+  }
+
+  // Start (or reuse) the stack, then read its connection details.
+  console.log("\nStarting local Supabase (first run downloads images)...");
+  let status = sbCli(["status", "-o", "json"], { capture: true });
+  if (!status.ok) {
+    const started = sbCli(["start"]);
+    if (!started.ok) {
+      console.log("supabase start failed — see output above.");
+      process.exit(1);
+    }
+    status = sbCli(["status", "-o", "json"], { capture: true });
+  }
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(status.stdout.slice(status.stdout.indexOf("{")));
+  } catch {
+    console.log(`Could not parse \`supabase status -o json\`:\n${status.stdout}`);
+    process.exit(1);
+  }
+  const apiUrl = pickKey(parsed, "API_URL", "apiUrl");
+  const anonKey = pickKey(parsed, "ANON_KEY", "anonKey");
+  const serviceKey = pickKey(parsed, "SERVICE_ROLE_KEY", "serviceRoleKey");
+  const jwtSecret = pickKey(parsed, "JWT_SECRET", "jwtSecret");
+  const dbUrl = pickKey(parsed, "DB_URL", "dbUrl");
+  if (!apiUrl || !anonKey || !serviceKey || !jwtSecret || !dbUrl) {
+    console.log(
+      `\`supabase status\` is missing expected fields. Got keys: ${Object.keys(parsed).join(", ")}`,
+    );
+    process.exit(1);
+  }
+
+  // The stack's values are authoritative for a local env — overwrite.
+  for (const f of [SAAS, WORKFLOWS]) {
+    upsertEnv(f, "NEXT_PUBLIC_SUPABASE_URL", apiUrl);
+    upsertEnv(f, "SUPABASE_SECRET_KEY", serviceKey);
+  }
+  upsertEnv(SAAS, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", anonKey);
+  upsertEnv(SAAS, "SUPABASE_JWT_SECRET", jwtSecret);
+  upsertEnv(SAAS, "BETTER_AUTH_DATABASE_URL", dbUrl);
+  console.log(`local stack up at ${apiUrl}; env written`);
+
+  // Apply any pending migrations (no-op when current).
+  console.log("Applying migrations...");
+  if (!sbCli(["migration", "up", "--local"]).ok) {
+    console.log("migration up failed — see output above.");
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // doctor
 // ---------------------------------------------------------------------------
 
@@ -183,7 +292,7 @@ async function doctor(): Promise<void> {
   if (!url) fail("NEXT_PUBLIC_SUPABASE_URL is empty in saas");
   else if (url !== wf.get("NEXT_PUBLIC_SUPABASE_URL"))
     fail("NEXT_PUBLIC_SUPABASE_URL differs between saas and workflows");
-  else pass("NEXT_PUBLIC_SUPABASE_URL matches across apps");
+  else pass(`NEXT_PUBLIC_SUPABASE_URL matches across apps (${isLocalUrl(url) ? "local" : "hosted"})`);
   for (const key of [
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SECRET_KEY",
@@ -209,7 +318,12 @@ async function doctor(): Promise<void> {
       if (res.ok) pass(`Supabase reachable (${url})`);
       else fail(`Supabase responded ${res.status} — check URL and publishable key`);
     } catch (err) {
-      fail(`Supabase unreachable: ${err instanceof Error ? err.message : err}`);
+      const hint = isLocalUrl(url)
+        ? " (is the local stack running? `bunx supabase --workdir packages/db start`)"
+        : "";
+      fail(
+        `Supabase unreachable: ${err instanceof Error ? err.message : err}${hint}`,
+      );
     }
   }
 
@@ -234,9 +348,10 @@ async function doctor(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const checkOnly = process.argv.includes("--check");
+const hosted = process.argv.includes("--hosted");
 
 if (!checkOnly) {
-  console.log("Wargame setup\n");
+  console.log(`Wargame setup (${hosted ? "hosted" : "local"} Supabase)\n`);
 
   for (const { envLocal, example } of FILES) {
     if (!existsSync(envLocal)) {
@@ -265,40 +380,44 @@ if (!checkOnly) {
   setIfBlank(WORKFLOWS, "WORKFLOW_AUTH_TOKEN", tokenExisting);
   if (generated.length) console.log(`generated: ${generated.join(", ")}`);
 
-  console.log(
-    "\nSupabase credentials (dashboard: https://supabase.com/dashboard," +
-      "\nyour project, Settings):",
-  );
-  await promptIfBlank(
-    [SAAS, WORKFLOWS],
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "Project URL",
-    "Settings → API → Project URL (https://<ref>.supabase.co)",
-  );
-  await promptIfBlank(
-    [SAAS],
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "Publishable key",
-    "Settings → API → Publishable key (sb_publishable_…)",
-  );
-  await promptIfBlank(
-    [SAAS, WORKFLOWS],
-    "SUPABASE_SECRET_KEY",
-    "Secret key",
-    "Settings → API → Secret keys (sb_secret_…)",
-  );
-  await promptIfBlank(
-    [SAAS],
-    "SUPABASE_JWT_SECRET",
-    "Legacy JWT secret",
-    "Settings → JWT Keys → Legacy JWT Secret → Reveal",
-  );
-  await promptIfBlank(
-    [SAAS],
-    "BETTER_AUTH_DATABASE_URL",
-    "Postgres connection string",
-    "Settings → Database → Connection string → URI (paste with password)",
-  );
+  if (hosted) {
+    console.log(
+      "\nSupabase credentials (dashboard: https://supabase.com/dashboard," +
+        "\nyour project, Settings):",
+    );
+    await promptIfBlank(
+      [SAAS, WORKFLOWS],
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "Project URL",
+      "Settings → API → Project URL (https://<ref>.supabase.co)",
+    );
+    await promptIfBlank(
+      [SAAS],
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "Publishable key",
+      "Settings → API → Publishable key (sb_publishable_…)",
+    );
+    await promptIfBlank(
+      [SAAS, WORKFLOWS],
+      "SUPABASE_SECRET_KEY",
+      "Secret key",
+      "Settings → API → Secret keys (sb_secret_…)",
+    );
+    await promptIfBlank(
+      [SAAS],
+      "SUPABASE_JWT_SECRET",
+      "Legacy JWT secret",
+      "Settings → JWT Keys → Legacy JWT Secret → Reveal",
+    );
+    await promptIfBlank(
+      [SAAS],
+      "BETTER_AUTH_DATABASE_URL",
+      "Postgres connection string",
+      "Settings → Database → Connection string → URI (paste with password)",
+    );
+  } else {
+    await provisionLocal();
+  }
 
   console.log("\nLLM key for local development (production users bring their own):");
   let provider = readEnv(SAAS).get("MODEL_PROVIDER") ?? "";
@@ -324,15 +443,27 @@ await doctor();
 rl.close();
 
 if (failures === 0) {
+  const finalUrl = readEnv(SAAS).get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
   console.log("\nNext steps:");
-  console.log("  1. bun db:link            # link to your Supabase project");
-  console.log(
-    "  2. Run packages/db/supabase/migrations/*_init.sql in the Supabase SQL editor",
-  );
-  console.log("  3. bun dev                # then open http://localhost:3000");
-  console.log(
-    "     Sign in locally via http://localhost:3000/api/dev/sign-in",
-  );
+  if (isLocalUrl(finalUrl)) {
+    console.log("  1. bun dev                # then open http://localhost:3010");
+    console.log(
+      "     Sign in locally via http://localhost:3010/api/dev/sign-in",
+    );
+    console.log("  Supabase Studio: http://127.0.0.1:54323");
+    console.log(
+      "  Stop the stack with: bunx supabase --workdir packages/db stop",
+    );
+  } else {
+    console.log("  1. bun db:link            # link to your Supabase project");
+    console.log(
+      "  2. Run packages/db/supabase/migrations/*_init.sql in the Supabase SQL editor",
+    );
+    console.log("  3. bun dev                # then open http://localhost:3010");
+    console.log(
+      "     Sign in locally via http://localhost:3010/api/dev/sign-in",
+    );
+  }
   if (warnings) console.log(`\n${warnings} warning(s) above.`);
 } else {
   console.log(`\n${failures} check(s) failed. Fix the FAIL lines and re-run.`);
