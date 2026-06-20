@@ -47,6 +47,8 @@ reasoning behind the service split.
 The short version:
 
 ```bash
+curl -fsSL https://bun.com/install | bash  # if you do not have Bun yet
+bun --version
 bun install
 bun run setup   # starts local Supabase in Docker, wires up env + secrets
 bun dev
@@ -54,8 +56,9 @@ bun dev
 
 `bun dev` runs the product app and the workflows app together. Local
 development needs Docker (the setup assistant runs Supabase locally and
-wires everything up) and one LLM API key; it does not need a Supabase
-account, an email provider, or any observability accounts.
+wires everything up). It does not need a Supabase account, an email
+provider, or any observability accounts. Users add an OpenAI or Anthropic
+API key in the app during onboarding.
 
 ## Run limits
 

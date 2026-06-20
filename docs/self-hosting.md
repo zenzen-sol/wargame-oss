@@ -5,20 +5,43 @@ there to a production deployment on Vercel.
 
 ## What you need
 
-- [Bun](https://bun.sh) 1.3+
+- [Bun](https://bun.sh) 1.3+. The setup assistant itself runs on Bun, so
+  install this before running any project commands.
 - [Docker](https://docs.docker.com/get-docker/) (Docker Desktop, OrbStack,
   or Colima). The default setup runs Supabase locally in Docker; no
   Supabase account is needed. To use a hosted
   [supabase.com](https://supabase.com) project instead, see "Hosted
   Supabase" below.
-- An OpenAI or Anthropic API key for local development. In production, users
-  bring their own keys (see "BYOK" below).
+- An OpenAI or Anthropic API key. You do not need it during setup; the app
+  asks for it during onboarding (see "BYOK" below).
 - For production email sign-in: a [Resend](https://resend.com) account with a
   verified sending domain. Local dev does not need this.
 
 ## Local setup
 
-1. Clone and install:
+1. Install Bun if it is not already available:
+
+   ```bash
+   curl -fsSL https://bun.com/install | bash
+   bun --version
+   ```
+
+   On Windows, use PowerShell instead:
+
+   ```powershell
+   powershell -c "irm bun.sh/install.ps1|iex"
+   bun --version
+   ```
+
+   If `bun --version` still says `command not found`, open a new terminal.
+   On macOS/Linux, make sure `~/.bun/bin` is on your `PATH`:
+
+   ```bash
+   export BUN_INSTALL="$HOME/.bun"
+   export PATH="$BUN_INSTALL/bin:$PATH"
+   ```
+
+2. Clone and install the project dependencies:
 
    ```bash
    git clone https://github.com/zenzen-sol/wargame-oss.git
@@ -26,7 +49,7 @@ there to a production deployment on Vercel.
    bun install
    ```
 
-2. With Docker running, run the setup assistant:
+3. With Docker running, run the setup assistant:
 
    ```bash
    bun run setup
@@ -36,15 +59,16 @@ there to a production deployment on Vercel.
    the app secrets (writing the must-match pairs to both apps in one step,
    so they cannot drift), starts the local Supabase stack (first run
    downloads the Docker images), applies the schema, writes every Supabase
-   env value automatically, prompts for an LLM key, and finishes with a
-   doctor pass. It is idempotent: re-running only fills in blanks, and
-   `bun run setup --check` runs just the doctor.
+   env value automatically, enables local dev sign-in, and finishes with a
+   doctor pass. It is idempotent: re-running only fills in blanks except
+   for local Supabase values, which are refreshed from the running local
+   stack. `bun run setup --check` runs just the doctor.
 
-3. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
+4. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
    default) routes OTPs into a database table instead of email. Navigate
    to `http://localhost:3010/api/dev/sign-in` to get a session.
 
-4. Run it:
+5. Run it:
 
    ```bash
    bun dev
