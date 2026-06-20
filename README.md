@@ -50,11 +50,11 @@ The short version:
 curl -fsSL https://bun.com/install | bash  # if you do not have Bun yet
 bun --version
 bun install
-bun run setup   # starts local Supabase in Docker, wires up env + secrets
-bun dev
+bun run setup   # starts local Supabase, wires env, asks to open the app
 ```
 
-To run setup and open the app in one step, use `bun run setup --launch`.
+Use `bun run setup --launch` to skip the prompt and open the app, or
+`bun run setup --no-launch` to set up without starting it.
 
 `bun dev` runs the product app and the workflows app together. Local
 development needs Docker (the setup assistant runs Supabase locally and

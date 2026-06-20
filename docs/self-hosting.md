@@ -59,25 +59,27 @@ there to a production deployment on Vercel.
    the app secrets (writing the must-match pairs to both apps in one step,
    so they cannot drift), starts the local Supabase stack (first run
    downloads the Docker images), applies the schema, writes every Supabase
-   env value automatically, enables local dev sign-in, and finishes with a
-   doctor pass. It is idempotent: re-running only fills in blanks except
-   for local Supabase values, which are refreshed from the running local
-   stack. `bun run setup --check` runs just the doctor.
+   env value automatically, enables local dev sign-in, finishes with a
+   doctor pass, and asks whether to start `bun dev` and open the local
+   sign-in page. If you launch from setup, it keeps `bun dev` attached to
+   the terminal. Press Ctrl-C to stop it.
 
-   To have setup start the dev server and open the local sign-in page after
-   the doctor passes, run:
+   It is idempotent: re-running only fills in blanks except for local
+   Supabase values, which are refreshed from the running local stack.
+   `bun run setup --check` runs just the doctor.
+
+   To skip the prompt, use one of the explicit modes:
 
    ```bash
    bun run setup --launch
+   bun run setup --no-launch
    ```
-
-   This keeps `bun dev` attached to the terminal. Press Ctrl-C to stop it.
 
 4. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
    default) routes OTPs into a database table instead of email. Navigate
    to `http://localhost:3010/api/dev/sign-in` to get a session.
 
-5. Run it:
+5. If you used `--no-launch`, run the app yourself:
 
    ```bash
    bun dev

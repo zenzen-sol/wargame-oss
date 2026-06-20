@@ -6,10 +6,13 @@
 //
 //   bun run setup           # local Supabase via Docker (the default):
 //                           #   starts the stack, applies migrations,
-//                           #   writes every env value automatically
+//                           #   writes every env value automatically,
+//                           #   asks whether to start dev and open the app
 //   bun run setup --hosted  # hosted Supabase: prompts for credentials
 //   bun run setup --check   # doctor only, no writes
 //   bun run setup --launch  # setup, start dev, open the dev sign-in page
+//   bun run setup --no-launch
+//                           # setup only, print next steps, then exit
 //
 // Re-running never overwrites a non-empty value, with one exception:
 // local mode refreshes Supabase values that already point at
@@ -362,6 +365,20 @@ async function launchDevServer(): Promise<void> {
   process.exit(exitCode ?? 0);
 }
 
+async function shouldLaunchAfterSetup(): Promise<boolean> {
+  if (checkOnly || noLaunch) return false;
+  if (forceLaunch) return true;
+  if (process.env.CI === "true" || !process.stdin.isTTY) return false;
+
+  const answer = (
+    await ask(
+      "Launch Wargame?",
+      `Start bun dev and open ${DEV_SIGN_IN_URL}? [Y/n]`,
+    )
+  ).toLowerCase();
+  return answer === "" || answer === "y" || answer === "yes";
+}
+
 async function doctor(): Promise<void> {
   console.log("\nDoctor:");
   for (const envLocal of [SAAS, WORKFLOWS]) {
@@ -465,7 +482,8 @@ async function doctor(): Promise<void> {
 
 const checkOnly = process.argv.includes("--check");
 const hosted = process.argv.includes("--hosted");
-const launch = process.argv.includes("--launch");
+const noLaunch = process.argv.includes("--no-launch");
+const forceLaunch = process.argv.includes("--launch");
 
 if (!checkOnly) {
   console.log(`Wargame setup (${hosted ? "hosted" : "local"} Supabase)\n`);
@@ -541,6 +559,7 @@ if (!checkOnly) {
 }
 
 await doctor();
+const launch = failures === 0 ? await shouldLaunchAfterSetup() : false;
 rl.close();
 
 if (failures === 0) {
@@ -560,7 +579,7 @@ if (failures === 0) {
     console.log(
       "  Stop the stack with: bunx supabase --workdir packages/db stop",
     );
-    console.log("  Or run setup and launch together: bun run setup --launch");
+    console.log("  Run setup and launch together: bun run setup");
   } else {
     console.log("  1. bun db:link            # link to your Supabase project");
     console.log(
@@ -572,7 +591,7 @@ if (failures === 0) {
     console.log(
       "     Sign in locally via http://localhost:3010/api/dev/sign-in",
     );
-    console.log("  Or run setup and launch together: bun run setup --launch");
+    console.log("  Run setup and launch together: bun run setup");
   }
   if (warnings) console.log(`\n${warnings} warning(s) above.`);
 } else {
