@@ -29,6 +29,7 @@ const SAAS = join(ROOT, "apps/saas/.env.local");
 const WORKFLOWS = join(ROOT, "apps/workflows/.env.local");
 const APP_URL = "http://localhost:3010";
 const DEV_SIGN_IN_URL = `${APP_URL}/api/dev/sign-in`;
+const READINESS_URL = `${APP_URL}/sign-in`;
 const SUPABASE_BIN = join(
   ROOT,
   process.platform === "win32"
@@ -39,6 +40,23 @@ const SUPABASE_BIN = join(
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
   { envLocal: WORKFLOWS, example: join(ROOT, "apps/workflows/.env.example") },
+];
+
+const LOCAL_APP_POSTGREST_GRANTS = [
+  [
+    "grant select, insert, update, delete on table",
+    "public.projects,",
+    "public.files,",
+    "public.project_parties,",
+    "public.interview_answers,",
+    "public.issues,",
+    "public.messages,",
+    "public.outputs,",
+    "public.project_document_versions",
+    "to authenticated",
+  ].join(" "),
+  "grant select, insert, update, delete on table public.user_api_keys to authenticated",
+  "grant select, insert, update, delete on table public.poll_responses to authenticated",
 ];
 
 // ---------------------------------------------------------------------------
@@ -156,7 +174,7 @@ async function promptIfBlank(
 function sbCli(
   args: string[],
   opts: { capture?: boolean } = {},
-): { ok: boolean; stdout: string } {
+): { ok: boolean; stdout: string; stderr: string } {
   if (!existsSync(SUPABASE_BIN)) {
     console.log(
       "\nSupabase CLI dependency is missing. Run `bun install`, then re-run setup.",
@@ -172,6 +190,7 @@ function sbCli(
   return {
     ok: res.status === 0,
     stdout: res.stdout ?? "",
+    stderr: res.stderr ?? "",
   };
 }
 
@@ -189,6 +208,20 @@ function unlinkHostedProjectForLocalSetup(): void {
     stdio: "ignore",
     encoding: "utf8",
   });
+}
+
+function repairLocalAppPostgrestGrants(): void {
+  for (const sql of LOCAL_APP_POSTGREST_GRANTS) {
+    const repaired = sbCli(["db", "query", "--local", sql], {
+      capture: true,
+    });
+    if (!repaired.ok) {
+      console.log("Could not repair local app PostgREST grants.");
+      const details = repaired.stderr || repaired.stdout;
+      if (details) console.log(details.trim());
+      process.exit(1);
+    }
+  }
 }
 
 function pickKey(obj: Record<string, unknown>, ...names: string[]): string {
@@ -273,6 +306,7 @@ values in apps/*/.env.local and re-run; to stay hosted, use
     console.log("migration up failed — see output above.");
     process.exit(1);
   }
+  repairLocalAppPostgrestGrants();
 }
 
 // ---------------------------------------------------------------------------
@@ -346,7 +380,7 @@ async function launchDevServer(): Promise<void> {
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
 
-  const ready = await waitForApp(APP_URL);
+  const ready = await waitForApp(READINESS_URL);
   if (ready) {
     console.log(`\nOpening ${DEV_SIGN_IN_URL}`);
     openBrowser(DEV_SIGN_IN_URL);

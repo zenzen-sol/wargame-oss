@@ -15,19 +15,25 @@ import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import * as Sentry from "@sentry/nextjs";
 
-export const langfuseSpanProcessor = new LangfuseSpanProcessor();
+let activeLangfuseSpanProcessor: LangfuseSpanProcessor | null = null;
+
+export async function flushLangfuse(): Promise<void> {
+  await activeLangfuseSpanProcessor?.forceFlush();
+}
+
+export const langfuseSpanProcessor = {
+  forceFlush: flushLangfuse,
+};
 
 export async function register() {
   // Langfuse: skip when keys aren't configured — keeps local dev
   // quiet for anyone who hasn't set up a Langfuse project yet.
   if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+    activeLangfuseSpanProcessor = new LangfuseSpanProcessor();
     const tracerProvider = new NodeTracerProvider({
-      spanProcessors: [langfuseSpanProcessor],
+      spanProcessors: [activeLangfuseSpanProcessor],
     });
     tracerProvider.register();
-    console.log("[langfuse] tracer provider registered");
-  } else {
-    console.log("[langfuse] keys not set, tracing disabled");
   }
 
   // Sentry: load per-runtime config. Each file's init is a no-op if

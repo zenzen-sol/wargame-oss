@@ -7,10 +7,10 @@
 //      handlers (start-conversion, start-extraction) and workflow
 //      steps.
 //
-// `langfuseSpanProcessor` is exported so workflow / step code can
-// call `forceFlush()` before the serverless container freezes —
-// Vercel Workflows steps are separate invocations and the default
-// batch processor won't drain on its own at step boundaries.
+// `flushLangfuse` is exported so workflow / step code can drain
+// traces before the serverless container freezes — Vercel Workflows
+// steps are separate invocations and the default batch processor
+// won't drain on its own at step boundaries.
 //
 // We use NodeTracerProvider directly (not @vercel/otel) because
 // @vercel/otel doesn't yet support OpenTelemetry JS SDK v2, which
@@ -21,11 +21,16 @@ import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import * as Sentry from "@sentry/nextjs";
 
-export const langfuseSpanProcessor = new LangfuseSpanProcessor();
+let langfuseSpanProcessor: LangfuseSpanProcessor | null = null;
+
+export async function flushLangfuse(): Promise<void> {
+  await langfuseSpanProcessor?.forceFlush();
+}
 
 export async function register() {
   // Langfuse: skip when keys aren't configured.
   if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+    langfuseSpanProcessor = new LangfuseSpanProcessor();
     const tracerProvider = new NodeTracerProvider({
       spanProcessors: [langfuseSpanProcessor],
     });

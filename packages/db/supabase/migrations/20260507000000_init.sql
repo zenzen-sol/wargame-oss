@@ -298,6 +298,17 @@ alter table messages enable row level security;
 alter table outputs enable row level security;
 alter table project_document_versions enable row level security;
 
+grant select, insert, update, delete on table
+  projects,
+  files,
+  project_parties,
+  interview_answers,
+  issues,
+  messages,
+  outputs,
+  project_document_versions
+to authenticated;
+
 -- projects: owner-scoped end-to-end.
 create policy projects_owner_select on projects
   for select to authenticated
@@ -622,6 +633,8 @@ create unique index user_api_keys_one_default_per_user
 
 alter table user_api_keys enable row level security;
 
+grant select, insert, update, delete on table user_api_keys to authenticated;
+
 create policy user_api_keys_own_select on user_api_keys
   for select using ((select auth.uid()) = user_id);
 create policy user_api_keys_own_insert on user_api_keys
@@ -676,6 +689,8 @@ create table poll_responses (
 );
 
 alter table poll_responses enable row level security;
+
+grant select, insert, update, delete on table poll_responses to authenticated;
 
 create policy poll_responses_own_select on poll_responses
   for select using ((select auth.uid()) = user_id);
