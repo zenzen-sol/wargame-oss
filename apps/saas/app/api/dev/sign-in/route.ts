@@ -12,19 +12,8 @@
 // Fail-closed: every call rechecks DEV_AUTH_BYPASS and asserts
 // NODE_ENV != production. The auth module guards too.
 import { auth } from "@/lib/auth";
-import { Pool } from "pg";
+import { getBetterAuthPool } from "@/lib/better-auth-db";
 import { NextResponse } from "next/server";
-
-let pool: Pool | undefined;
-function getPool(): Pool {
-  if (pool) return pool;
-  const url = process.env.BETTER_AUTH_DATABASE_URL;
-  if (!url) {
-    throw new Error("BETTER_AUTH_DATABASE_URL is not set.");
-  }
-  pool = new Pool({ connectionString: url });
-  return pool;
-}
 
 function gateError(): NextResponse | null {
   if (process.env.DEV_AUTH_BYPASS !== "1") {
@@ -55,7 +44,7 @@ async function runOtpDance(email: string): Promise<Response> {
     );
   }
 
-  const result = await getPool().query<{ otp: string }>(
+  const result = await getBetterAuthPool().query<{ otp: string }>(
     'select otp from dev_otp_inbox where email = $1 order by "created_at" desc limit 1',
     [email],
   );

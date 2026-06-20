@@ -584,11 +584,6 @@ alter table verification enable row level security;
 alter table passkey enable row level security;
 alter table dev_otp_inbox enable row level security;
 
--- Trusted server-side app code reaches these tables through PostgREST with
--- the service_role JWT. RLS still blocks anon/authenticated completely, while
--- service_role keeps the narrow access needed for onboarding and BYOK flows.
-grant select, update on table "user" to service_role;
-
 -- ─────────────────────────────────────────────────────────────────────
 -- BYOK — per-user encrypted API keys
 -- ─────────────────────────────────────────────────────────────────────
@@ -626,8 +621,6 @@ create unique index user_api_keys_one_default_per_user
   on user_api_keys (user_id) where is_default;
 
 alter table user_api_keys enable row level security;
-
-grant select, insert, update, delete on table user_api_keys to service_role;
 
 create policy user_api_keys_own_select on user_api_keys
   for select using ((select auth.uid()) = user_id);

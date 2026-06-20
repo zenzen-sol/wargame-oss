@@ -5,7 +5,7 @@
 // to give callers a clean redirect / Response when there's no row.
 import "server-only";
 import { auth } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getDisclaimerAcknowledgedAt } from "@/lib/better-auth-db";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database.types";
 import { headers } from "next/headers";
@@ -52,24 +52,20 @@ export async function requireUser(): Promise<SessionUser> {
  * saves credentials, or kicks off LLM work calls this instead of
  * requireUser.
  *
- * Reads disclaimer_acknowledged_at via the admin client because the
- * `user` table has RLS enabled with no policies (locked down for the
- * PostgREST surface); the admin client bypasses RLS. We still scope
- * the read by the verified session user id.
+ * Reads disclaimer_acknowledged_at through the same direct Postgres
+ * boundary Better-Auth uses. The `user` table is intentionally not
+ * part of the Supabase/PostgREST app data surface.
  */
 export async function requireUserWithDisclaimer(): Promise<SessionUser> {
   const user = await requireUser();
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("user")
-    .select("disclaimer_acknowledged_at")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (error) {
+  let acknowledgedAt: string | null;
+  try {
+    acknowledgedAt = await getDisclaimerAcknowledgedAt(user.id);
+  } catch (error) {
     console.error("[auth-session] disclaimer lookup failed", error);
     throw new Response("Internal error", { status: 500 });
   }
-  if (!data?.disclaimer_acknowledged_at) {
+  if (!acknowledgedAt) {
     throw new Response("Disclaimer not acknowledged.", { status: 403 });
   }
   return user;

@@ -1,3 +1,4 @@
+import { getBetterAuthPool } from "@/lib/better-auth-db";
 // Better-Auth instance backed by Postgres (Supabase) via the
 // built-in Kysely adapter. Better-Auth manages auth UX (sign-in,
 // passkeys, sessions, OTP); a separate JWT bridge in
@@ -8,9 +9,8 @@
 // Tables live in `public` (Better-Auth defaults) — see the schema
 // migration for the full DDL.
 import { passkey } from "@better-auth/passkey";
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { emailOTP } from "better-auth/plugins/email-otp";
-import { Pool } from "pg";
 import { Resend } from "resend";
 
 // Site URL resolution. Falls back to VERCEL_URL on preview deploys
@@ -25,15 +25,6 @@ const siteUrl =
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
   "http://localhost:3000";
 
-const dbUrl = process.env.BETTER_AUTH_DATABASE_URL;
-if (!dbUrl) {
-  throw new Error(
-    "BETTER_AUTH_DATABASE_URL is not set. Use the Supabase Direct " +
-      "connection or Session pooler URL — Better-Auth needs CREATE/ALTER " +
-      "(only on first run / migrations) and persistent connections.",
-  );
-}
-
 const devAuthBypass = process.env.DEV_AUTH_BYPASS === "1";
 if (devAuthBypass && process.env.NODE_ENV === "production") {
   throw new Error(
@@ -42,7 +33,7 @@ if (devAuthBypass && process.env.NODE_ENV === "production") {
   );
 }
 
-const pool = new Pool({ connectionString: dbUrl });
+const pool = getBetterAuthPool();
 
 // Resend client is cheap to construct, but per `server-hoist-static-io`:
 // hoisting any I/O-adjacent allocation out of the hot path is the cheap

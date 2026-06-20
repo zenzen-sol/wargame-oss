@@ -7,10 +7,8 @@
 // /sign-in by the auth helper before reaching the action body. After
 // success, the calling page uses redirect() to advance the user to
 // the next onboarding step.
-import {
-  requireUser,
-  requireUserWithDisclaimer,
-} from "@/lib/auth-session";
+import { requireUser, requireUserWithDisclaimer } from "@/lib/auth-session";
+import { acknowledgeDisclaimer } from "@/lib/better-auth-db";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptApiKey, validateApiKey } from "@wargame-esq/agents";
@@ -26,12 +24,7 @@ export interface SaveApiKeyResult {
 
 export async function acceptDisclaimer(): Promise<void> {
   const user = await requireUser();
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("user")
-    .update({ disclaimer_acknowledged_at: new Date().toISOString() })
-    .eq("id", user.id);
-  if (error) throw error;
+  await acknowledgeDisclaimer(user.id);
   // The (auth) layout's gate will re-evaluate on next navigation; the
   // welcome page redirects to the next step on success.
   revalidatePath("/", "layout");

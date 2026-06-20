@@ -7,6 +7,7 @@ import "server-only";
 //
 // The DB queries are React.cache-wrapped per request so the layout
 // and the page it renders share a single round-trip each.
+import { getDisclaimerAcknowledgedAt } from "@/lib/better-auth-db";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cache } from "react";
 
@@ -19,12 +20,8 @@ export const getOnboardingFlags = cache(
   async (userId: string): Promise<OnboardingFlags> => {
     const admin = createAdminClient();
 
-    const [userRow, keysRow] = await Promise.all([
-      admin
-        .from("user")
-        .select("disclaimer_acknowledged_at")
-        .eq("id", userId)
-        .maybeSingle(),
+    const [acknowledgedAt, keysRow] = await Promise.all([
+      getDisclaimerAcknowledgedAt(userId),
       admin
         .from("user_api_keys")
         .select("provider", { count: "exact", head: true })
@@ -32,9 +29,7 @@ export const getOnboardingFlags = cache(
     ]);
 
     return {
-      acknowledgedDisclaimer: Boolean(
-        userRow.data?.disclaimer_acknowledged_at,
-      ),
+      acknowledgedDisclaimer: Boolean(acknowledgedAt),
       hasAnyApiKey: (keysRow.count ?? 0) > 0,
     };
   },

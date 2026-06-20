@@ -37,10 +37,6 @@ const SUPABASE_BIN = join(
     : "node_modules/.bin/supabase",
 );
 const LOCAL_AUTH_RESEND_KEY = "local-dev-unused";
-const LOCAL_POSTGREST_GRANT_REPAIR_SQL = [
-  'grant select, update on table public."user" to service_role',
-  "grant select, insert, update, delete on table public.user_api_keys to service_role",
-];
 
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
@@ -163,7 +159,7 @@ async function promptIfBlank(
 function sbCli(
   args: string[],
   opts: { capture?: boolean } = {},
-): { ok: boolean; stdout: string; stderr: string } {
+): { ok: boolean; stdout: string } {
   if (!existsSync(SUPABASE_BIN)) {
     console.log(
       "\nSupabase CLI dependency is missing. Run `bun install`, then re-run setup.",
@@ -182,22 +178,7 @@ function sbCli(
   return {
     ok: res.status === 0,
     stdout: res.stdout ?? "",
-    stderr: res.stderr ?? "",
   };
-}
-
-function repairLocalPostgrestGrants(): void {
-  for (const sql of LOCAL_POSTGREST_GRANT_REPAIR_SQL) {
-    const repaired = sbCli(["db", "query", "--local", sql], {
-      capture: true,
-    });
-    if (!repaired.ok) {
-      console.log(
-        `Could not repair local PostgREST grants:\n${repaired.stderr || repaired.stdout}`,
-      );
-      process.exit(1);
-    }
-  }
 }
 
 function unlinkHostedProjectForLocalSetup(): void {
@@ -301,7 +282,6 @@ values in apps/*/.env.local and re-run; to stay hosted, use
     console.log("migration up failed — see output above.");
     process.exit(1);
   }
-  repairLocalPostgrestGrants();
 }
 
 // ---------------------------------------------------------------------------
