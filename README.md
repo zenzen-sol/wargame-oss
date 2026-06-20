@@ -54,6 +54,8 @@ bun run setup   # starts local Supabase in Docker, wires up env + secrets
 bun dev
 ```
 
+To run setup and open the app in one step, use `bun run setup --launch`.
+
 `bun dev` runs the product app and the workflows app together. Local
 development needs Docker (the setup assistant runs Supabase locally and
 wires everything up). It does not need a Supabase account, an email

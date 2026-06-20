@@ -64,6 +64,15 @@ there to a production deployment on Vercel.
    for local Supabase values, which are refreshed from the running local
    stack. `bun run setup --check` runs just the doctor.
 
+   To have setup start the dev server and open the local sign-in page after
+   the doctor passes, run:
+
+   ```bash
+   bun run setup --launch
+   ```
+
+   This keeps `bun dev` attached to the terminal. Press Ctrl-C to stop it.
+
 4. Sign-in works without an email provider: `DEV_AUTH_BYPASS=1` (the
    default) routes OTPs into a database table instead of email. Navigate
    to `http://localhost:3010/api/dev/sign-in` to get a session.
@@ -183,3 +192,8 @@ and the SDKs no-op.
 - **Local stack got wiped or keys changed.** Re-run `bun run setup`; in
   local mode it refreshes localhost-pointing env values from the running
   stack and re-applies any pending migrations.
+- **Supabase CLI says a newer version is available.** The project pins the
+  Supabase CLI in `package.json` / `bun.lock` so every contributor runs the
+  same version. Setup does not update dependencies during first-run setup.
+  Update it deliberately with `bun update supabase`, then commit the lockfile
+  change after checking the release notes.

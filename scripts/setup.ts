@@ -9,12 +9,13 @@
 //                           #   writes every env value automatically
 //   bun run setup --hosted  # hosted Supabase: prompts for credentials
 //   bun run setup --check   # doctor only, no writes
+//   bun run setup --launch  # setup, start dev, open the dev sign-in page
 //
 // Re-running never overwrites a non-empty value, with one exception:
 // local mode refreshes Supabase values that already point at
 // localhost (the stack's keys can change after `supabase stop`).
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -24,6 +25,8 @@ const ROOT = join(import.meta.dir, "..");
 const SAAS = join(ROOT, "apps/saas/.env.local");
 const WORKFLOWS = join(ROOT, "apps/workflows/.env.local");
 const DB = join(ROOT, "packages/db/.env.local");
+const APP_URL = "http://localhost:3010";
+const DEV_SIGN_IN_URL = `${APP_URL}/api/dev/sign-in`;
 
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
@@ -292,6 +295,73 @@ function info(msg: string): void {
   console.log(`  info  ${msg}`);
 }
 
+// ---------------------------------------------------------------------------
+// launch helpers
+// ---------------------------------------------------------------------------
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForApp(url: string, timeoutMs = 60_000): Promise<boolean> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (res.status < 500) return true;
+    } catch {
+      // The dev server is still booting.
+    }
+    await sleep(1000);
+  }
+  return false;
+}
+
+function openBrowser(url: string): void {
+  const command =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "cmd"
+        : "xdg-open";
+  const args =
+    process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  const res = spawnSync(command, args, { stdio: "ignore" });
+  if (res.status !== 0) {
+    console.log(`Could not open a browser automatically. Open ${url}`);
+  }
+}
+
+async function launchDevServer(): Promise<void> {
+  console.log("\nStarting dev server...");
+  const dev = spawn("bun", ["dev"], {
+    cwd: ROOT,
+    stdio: "inherit",
+  });
+
+  const stop = (): void => {
+    dev.kill("SIGINT");
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+
+  const ready = await waitForApp(APP_URL);
+  if (ready) {
+    console.log(`\nOpening ${DEV_SIGN_IN_URL}`);
+    openBrowser(DEV_SIGN_IN_URL);
+    console.log("\nDev server is running. Press Ctrl-C to stop.");
+  } else {
+    console.log(
+      `\nDev server is still starting. Open ${DEV_SIGN_IN_URL} when it is ready.`,
+    );
+  }
+
+  const exitCode = await new Promise<number | null>((resolve) => {
+    dev.once("exit", (code) => resolve(code));
+  });
+  process.exit(exitCode ?? 0);
+}
+
 async function doctor(): Promise<void> {
   console.log("\nDoctor:");
   for (const envLocal of [SAAS, WORKFLOWS]) {
@@ -395,6 +465,7 @@ async function doctor(): Promise<void> {
 
 const checkOnly = process.argv.includes("--check");
 const hosted = process.argv.includes("--hosted");
+const launch = process.argv.includes("--launch");
 
 if (!checkOnly) {
   console.log(`Wargame setup (${hosted ? "hosted" : "local"} Supabase)\n`);
@@ -474,6 +545,9 @@ rl.close();
 
 if (failures === 0) {
   const finalUrl = readEnv(SAAS).get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
+  if (launch) {
+    await launchDevServer();
+  }
   console.log("\nNext steps:");
   if (isLocalUrl(finalUrl)) {
     console.log(
@@ -486,6 +560,7 @@ if (failures === 0) {
     console.log(
       "  Stop the stack with: bunx supabase --workdir packages/db stop",
     );
+    console.log("  Or run setup and launch together: bun run setup --launch");
   } else {
     console.log("  1. bun db:link            # link to your Supabase project");
     console.log(
@@ -497,6 +572,7 @@ if (failures === 0) {
     console.log(
       "     Sign in locally via http://localhost:3010/api/dev/sign-in",
     );
+    console.log("  Or run setup and launch together: bun run setup --launch");
   }
   if (warnings) console.log(`\n${warnings} warning(s) above.`);
 } else {
