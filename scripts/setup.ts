@@ -37,6 +37,10 @@ const SUPABASE_BIN = join(
     : "node_modules/.bin/supabase",
 );
 const LOCAL_AUTH_RESEND_KEY = "local-dev-unused";
+const LOCAL_POSTGREST_GRANT_REPAIR_SQL = [
+  'grant select, update on table public."user" to service_role',
+  "grant select, insert, update, delete on table public.user_api_keys to service_role",
+];
 
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
@@ -159,27 +163,41 @@ async function promptIfBlank(
 function sbCli(
   args: string[],
   opts: { capture?: boolean } = {},
-): { ok: boolean; stdout: string } {
+): { ok: boolean; stdout: string; stderr: string } {
   if (!existsSync(SUPABASE_BIN)) {
     console.log(
       "\nSupabase CLI dependency is missing. Run `bun install`, then re-run setup.",
     );
     process.exit(1);
   }
-  const res = spawnSync(
-    SUPABASE_BIN,
-    ["--workdir", "packages/db", ...args],
-    {
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
-      },
-      stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
-      encoding: "utf8",
+  const res = spawnSync(SUPABASE_BIN, ["--workdir", "packages/db", ...args], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
     },
-  );
-  return { ok: res.status === 0, stdout: res.stdout ?? "" };
+    stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+    encoding: "utf8",
+  });
+  return {
+    ok: res.status === 0,
+    stdout: res.stdout ?? "",
+    stderr: res.stderr ?? "",
+  };
+}
+
+function repairLocalPostgrestGrants(): void {
+  for (const sql of LOCAL_POSTGREST_GRANT_REPAIR_SQL) {
+    const repaired = sbCli(["db", "query", "--local", sql], {
+      capture: true,
+    });
+    if (!repaired.ok) {
+      console.log(
+        `Could not repair local PostgREST grants:\n${repaired.stderr || repaired.stdout}`,
+      );
+      process.exit(1);
+    }
+  }
 }
 
 function unlinkHostedProjectForLocalSetup(): void {
@@ -190,19 +208,15 @@ function unlinkHostedProjectForLocalSetup(): void {
   if (!linkedFiles.some((file) => existsSync(file))) return;
 
   console.log("Ignoring hosted Supabase link for local setup...");
-  spawnSync(
-    SUPABASE_BIN,
-    ["--workdir", "packages/db", "unlink", "--yes"],
-    {
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
-      },
-      stdio: "ignore",
-      encoding: "utf8",
+  spawnSync(SUPABASE_BIN, ["--workdir", "packages/db", "unlink", "--yes"], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
     },
-  );
+    stdio: "ignore",
+    encoding: "utf8",
+  });
 }
 
 function pickKey(obj: Record<string, unknown>, ...names: string[]): string {
@@ -287,6 +301,7 @@ values in apps/*/.env.local and re-run; to stay hosted, use
     console.log("migration up failed — see output above.");
     process.exit(1);
   }
+  repairLocalPostgrestGrants();
 }
 
 // ---------------------------------------------------------------------------
@@ -340,8 +355,7 @@ function openBrowser(url: string): void {
       : process.platform === "win32"
         ? "cmd"
         : "xdg-open";
-  const args =
-    process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
   const res = spawnSync(command, args, { stdio: "ignore" });
   if (res.status !== 0) {
     console.log(`Could not open a browser automatically. Open ${url}`);
