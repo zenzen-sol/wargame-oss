@@ -14,9 +14,9 @@
 // local mode refreshes Supabase values that already point at
 // localhost (the stack's keys can change after `supabase stop`).
 
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 
@@ -152,11 +152,38 @@ function sbCli(
     ["supabase", "--workdir", "packages/db", ...args],
     {
       cwd: ROOT,
+      env: {
+        ...process.env,
+        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || "local-dev-unused",
+      },
       stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
       encoding: "utf8",
     },
   );
   return { ok: res.status === 0, stdout: res.stdout ?? "" };
+}
+
+function unlinkHostedProjectForLocalSetup(): void {
+  const linkedFiles = [
+    join(ROOT, "packages/db/supabase/.temp/linked-project.json"),
+    join(ROOT, "packages/db/supabase/.temp/project-ref"),
+  ];
+  if (!linkedFiles.some((file) => existsSync(file))) return;
+
+  console.log("Ignoring hosted Supabase link for local setup...");
+  spawnSync(
+    "bunx",
+    ["supabase", "--workdir", "packages/db", "unlink", "--yes"],
+    {
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || "local-dev-unused",
+      },
+      stdio: "ignore",
+      encoding: "utf8",
+    },
+  );
 }
 
 function pickKey(obj: Record<string, unknown>, ...names: string[]): string {
@@ -193,6 +220,7 @@ values in apps/*/.env.local and re-run; to stay hosted, use
 
   // Start (or reuse) the stack, then read its connection details.
   console.log("\nStarting local Supabase (first run downloads images)...");
+  unlinkHostedProjectForLocalSetup();
   let status = sbCli(["status", "-o", "json"], { capture: true });
   if (!status.ok) {
     const started = sbCli(["start"]);
@@ -206,7 +234,9 @@ values in apps/*/.env.local and re-run; to stay hosted, use
   try {
     parsed = JSON.parse(status.stdout.slice(status.stdout.indexOf("{")));
   } catch {
-    console.log(`Could not parse \`supabase status -o json\`:\n${status.stdout}`);
+    console.log(
+      `Could not parse \`supabase status -o json\`:\n${status.stdout}`,
+    );
     process.exit(1);
   }
   const apiUrl = pickKey(parsed, "API_URL", "apiUrl");
@@ -229,6 +259,7 @@ values in apps/*/.env.local and re-run; to stay hosted, use
   upsertEnv(SAAS, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", anonKey);
   upsertEnv(SAAS, "SUPABASE_JWT_SECRET", jwtSecret);
   upsertEnv(SAAS, "BETTER_AUTH_DATABASE_URL", dbUrl);
+  upsertEnv(SAAS, "DEV_AUTH_BYPASS", "1");
   console.log(`local stack up at ${apiUrl}; env written`);
 
   // Apply any pending migrations (no-op when current).
@@ -257,6 +288,9 @@ function warn(msg: string): void {
   warnings++;
   console.log(`  warn  ${msg}`);
 }
+function info(msg: string): void {
+  console.log(`  info  ${msg}`);
+}
 
 async function doctor(): Promise<void> {
   console.log("\nDoctor:");
@@ -268,7 +302,8 @@ async function doctor(): Promise<void> {
   }
   // The db env only feeds AUTH_RESEND_KEY into Supabase's config.toml;
   // dev with DEV_AUTH_BYPASS never sends email.
-  if (!existsSync(DB)) warn(`${DB} missing (only needed for Resend SMTP config)`);
+  if (!existsSync(DB))
+    warn(`${DB} missing (only needed for Resend SMTP config)`);
   const saas = readEnv(SAAS);
   const wf = readEnv(WORKFLOWS);
 
@@ -282,7 +317,9 @@ async function doctor(): Promise<void> {
   }
   const enc = saas.get("API_KEY_ENCRYPTION_SECRET") ?? "";
   if (enc && !/^[0-9a-f]{64}$/i.test(enc))
-    warn("API_KEY_ENCRYPTION_SECRET is not 64 hex chars (openssl rand -hex 32)");
+    warn(
+      "API_KEY_ENCRYPTION_SECRET is not 64 hex chars (openssl rand -hex 32)",
+    );
 
   if (saas.get("BETTER_AUTH_SECRET")) pass("BETTER_AUTH_SECRET set");
   else fail("BETTER_AUTH_SECRET is empty");
@@ -292,7 +329,10 @@ async function doctor(): Promise<void> {
   if (!url) fail("NEXT_PUBLIC_SUPABASE_URL is empty in saas");
   else if (url !== wf.get("NEXT_PUBLIC_SUPABASE_URL"))
     fail("NEXT_PUBLIC_SUPABASE_URL differs between saas and workflows");
-  else pass(`NEXT_PUBLIC_SUPABASE_URL matches across apps (${isLocalUrl(url) ? "local" : "hosted"})`);
+  else
+    pass(
+      `NEXT_PUBLIC_SUPABASE_URL matches across apps (${isLocalUrl(url) ? "local" : "hosted"})`,
+    );
   for (const key of [
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SECRET_KEY",
@@ -302,7 +342,8 @@ async function doctor(): Promise<void> {
     if (saas.get(key)) pass(`${key} set`);
     else fail(`${key} is empty in saas`);
   }
-  if (wf.get("SUPABASE_SECRET_KEY")) pass("SUPABASE_SECRET_KEY set in workflows");
+  if (wf.get("SUPABASE_SECRET_KEY"))
+    pass("SUPABASE_SECRET_KEY set in workflows");
   else fail("SUPABASE_SECRET_KEY is empty in workflows");
 
   // Live ping. GoTrue's health endpoint accepts the publishable key;
@@ -316,7 +357,10 @@ async function doctor(): Promise<void> {
         signal: AbortSignal.timeout(8000),
       });
       if (res.ok) pass(`Supabase reachable (${url})`);
-      else fail(`Supabase responded ${res.status} — check URL and publishable key`);
+      else
+        fail(
+          `Supabase responded ${res.status} — check URL and publishable key`,
+        );
     } catch (err) {
       const hint = isLocalUrl(url)
         ? " (is the local stack running? `bunx supabase --workdir packages/db start`)"
@@ -327,20 +371,22 @@ async function doctor(): Promise<void> {
     }
   }
 
-  // LLM dev fallback.
+  // LLM env fallback is optional; normal local setup adds BYOK keys in-app.
   const provider = saas.get("MODEL_PROVIDER") ?? "";
-  const keyName = provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
-  if (!provider) warn("MODEL_PROVIDER unset; dev fallback LLM calls will fail");
-  else if (!saas.get(keyName))
-    warn(`${keyName} unset in saas; dev fallback LLM calls will fail`);
-  else if (!wf.get(keyName))
-    warn(`${keyName} unset in workflows; extraction will fail in dev`);
+  const keyName =
+    provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
+  const saasKey = provider ? saas.get(keyName) : "";
+  const wfKey = provider ? wf.get(keyName) : "";
+  if (!provider) info("LLM keys are configured in the app during onboarding");
+  else if (!saasKey && !wfKey)
+    info("LLM keys are configured in the app during onboarding");
+  else if (!saasKey || !wfKey)
+    info("LLM keys are configured in the app during onboarding");
   else pass(`dev LLM fallback configured (${provider})`);
 
   if (saas.get("DEV_AUTH_BYPASS") === "1")
     pass("DEV_AUTH_BYPASS=1 — sign in locally via /api/dev/sign-in");
-  else
-    warn("DEV_AUTH_BYPASS is off — local sign-in requires a Resend key");
+  else warn("DEV_AUTH_BYPASS is off — local sign-in requires a Resend key");
 }
 
 // ---------------------------------------------------------------------------
@@ -419,24 +465,8 @@ if (!checkOnly) {
     await provisionLocal();
   }
 
-  console.log("\nLLM key for local development (production users bring their own):");
-  let provider = readEnv(SAAS).get("MODEL_PROVIDER") ?? "";
-  if (!provider) {
-    provider =
-      (await ask("Provider", 'Type "openai" or "anthropic" (default openai)')) ||
-      "openai";
-    if (provider !== "anthropic") provider = "openai";
-    for (const f of [SAAS, WORKFLOWS]) upsertEnv(f, "MODEL_PROVIDER", provider);
-  }
-  const llmKeyName =
-    provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
-  await promptIfBlank(
-    [SAAS, WORKFLOWS],
-    llmKeyName,
-    `${llmKeyName}`,
-    "Used only as the local-dev fallback; leave blank to skip",
-    { optional: true },
-  );
+  console.log("\nLLM keys:");
+  console.log("  configure OpenAI or Anthropic in the app during onboarding.");
 }
 
 await doctor();
@@ -446,7 +476,9 @@ if (failures === 0) {
   const finalUrl = readEnv(SAAS).get("NEXT_PUBLIC_SUPABASE_URL") ?? "";
   console.log("\nNext steps:");
   if (isLocalUrl(finalUrl)) {
-    console.log("  1. bun dev                # then open http://localhost:3010");
+    console.log(
+      "  1. bun dev                # then open http://localhost:3010",
+    );
     console.log(
       "     Sign in locally via http://localhost:3010/api/dev/sign-in",
     );
@@ -459,7 +491,9 @@ if (failures === 0) {
     console.log(
       "  2. Run packages/db/supabase/migrations/*_init.sql in the Supabase SQL editor",
     );
-    console.log("  3. bun dev                # then open http://localhost:3010");
+    console.log(
+      "  3. bun dev                # then open http://localhost:3010",
+    );
     console.log(
       "     Sign in locally via http://localhost:3010/api/dev/sign-in",
     );
