@@ -30,6 +30,13 @@ const WORKFLOWS = join(ROOT, "apps/workflows/.env.local");
 const DB = join(ROOT, "packages/db/.env.local");
 const APP_URL = "http://localhost:3010";
 const DEV_SIGN_IN_URL = `${APP_URL}/api/dev/sign-in`;
+const SUPABASE_BIN = join(
+  ROOT,
+  process.platform === "win32"
+    ? "node_modules/.bin/supabase.cmd"
+    : "node_modules/.bin/supabase",
+);
+const LOCAL_AUTH_RESEND_KEY = "local-dev-unused";
 
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
@@ -153,14 +160,20 @@ function sbCli(
   args: string[],
   opts: { capture?: boolean } = {},
 ): { ok: boolean; stdout: string } {
+  if (!existsSync(SUPABASE_BIN)) {
+    console.log(
+      "\nSupabase CLI dependency is missing. Run `bun install`, then re-run setup.",
+    );
+    process.exit(1);
+  }
   const res = spawnSync(
-    "bunx",
-    ["supabase", "--workdir", "packages/db", ...args],
+    SUPABASE_BIN,
+    ["--workdir", "packages/db", ...args],
     {
       cwd: ROOT,
       env: {
         ...process.env,
-        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || "local-dev-unused",
+        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
       },
       stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
       encoding: "utf8",
@@ -178,13 +191,13 @@ function unlinkHostedProjectForLocalSetup(): void {
 
   console.log("Ignoring hosted Supabase link for local setup...");
   spawnSync(
-    "bunx",
-    ["supabase", "--workdir", "packages/db", "unlink", "--yes"],
+    SUPABASE_BIN,
+    ["--workdir", "packages/db", "unlink", "--yes"],
     {
       cwd: ROOT,
       env: {
         ...process.env,
-        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || "local-dev-unused",
+        AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
       },
       stdio: "ignore",
       encoding: "utf8",
