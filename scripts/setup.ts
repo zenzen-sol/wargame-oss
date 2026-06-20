@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// First-run setup: creates the three .env.local files, generates the
+// First-run setup: creates the app .env.local files, generates the
 // app secrets so the must-match pairs match by construction, points
 // the apps at a Supabase instance, and finishes with a doctor pass
 // that verifies the invariants the apps fail silently without.
@@ -27,7 +27,6 @@ import { createInterface } from "node:readline/promises";
 const ROOT = join(import.meta.dir, "..");
 const SAAS = join(ROOT, "apps/saas/.env.local");
 const WORKFLOWS = join(ROOT, "apps/workflows/.env.local");
-const DB = join(ROOT, "packages/db/.env.local");
 const APP_URL = "http://localhost:3010";
 const DEV_SIGN_IN_URL = `${APP_URL}/api/dev/sign-in`;
 const SUPABASE_BIN = join(
@@ -36,12 +35,10 @@ const SUPABASE_BIN = join(
     ? "node_modules/.bin/supabase.cmd"
     : "node_modules/.bin/supabase",
 );
-const LOCAL_AUTH_RESEND_KEY = "local-dev-unused";
 
 const FILES: Array<{ envLocal: string; example: string }> = [
   { envLocal: SAAS, example: join(ROOT, "apps/saas/.env.example") },
   { envLocal: WORKFLOWS, example: join(ROOT, "apps/workflows/.env.example") },
-  { envLocal: DB, example: join(ROOT, "packages/db/.env.example") },
 ];
 
 // ---------------------------------------------------------------------------
@@ -168,10 +165,7 @@ function sbCli(
   }
   const res = spawnSync(SUPABASE_BIN, ["--workdir", "packages/db", ...args], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
-    },
+    env: process.env,
     stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit",
     encoding: "utf8",
   });
@@ -191,10 +185,7 @@ function unlinkHostedProjectForLocalSetup(): void {
   console.log("Ignoring hosted Supabase link for local setup...");
   spawnSync(SUPABASE_BIN, ["--workdir", "packages/db", "unlink", "--yes"], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      AUTH_RESEND_KEY: process.env.AUTH_RESEND_KEY || LOCAL_AUTH_RESEND_KEY,
-    },
+    env: process.env,
     stdio: "ignore",
     encoding: "utf8",
   });
@@ -394,10 +385,6 @@ async function doctor(): Promise<void> {
       return;
     }
   }
-  // The db env only feeds AUTH_RESEND_KEY into Supabase's config.toml;
-  // dev with DEV_AUTH_BYPASS never sends email.
-  if (!existsSync(DB))
-    warn(`${DB} missing (only needed for Resend SMTP config)`);
   const saas = readEnv(SAAS);
   const wf = readEnv(WORKFLOWS);
 

@@ -59,19 +59,6 @@ otp_expiry = 1200
 subject = "Your Wargame sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
-# Resend SMTP. The Resend API key (re_…) acts as the SMTP password.
-# `env(AUTH_RESEND_KEY)` resolves from the .env file at the directory
-# where you run `supabase config push` (i.e. repo root). Same key value
-# Resend uses for everything; named for what it is, not where it lives.
-[auth.email.smtp]
-enabled = true
-host = "smtp.resend.com"
-port = 587
-user = "resend"
-pass = "env(AUTH_RESEND_KEY)"
-admin_email = "onboarding@resend.dev"
-sender_name = "Wargame"
-
 [storage]
 enabled = true
 file_size_limit = "50MiB"
