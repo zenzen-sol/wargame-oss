@@ -1,14 +1,8 @@
 # Wargame
 
-Wargame the negotiation before you have it. Upload a contract, tell the app
-which party you are, and watch two AI agents negotiate the document issue by
-issue: one advocating your side's interests, one playing a realistic
-counterparty. Each issue resolves, deadlocks, or hits its turn cap, and the
-run compiles the agreed language into a tracked-changes redline you can open
-in Word.
+Wargame runs simulated negotiations on your business contracts. Two teams of AI agents—one friendly, and one adversarial—review your contract and produce an issues list. The agents negotiate the issues point-by-point while you watch their internal reasoning and conversation in real time.
 
-This is a tool for pressure-testing positions, not a lawyer. Nothing it
-produces is legal advice.
+This is a tool for pressure-testing positions, spotting potential issues, and game-planning negotiations. Nothing it produces is legal advice.
 
 ## How it works
 
