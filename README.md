@@ -62,6 +62,20 @@ wires everything up). It does not need a Supabase account, an email
 provider, or any observability accounts. Users add an OpenAI or Anthropic
 API key in the app during onboarding.
 
+## Deploy to Vercel
+
+Production deploys use two Vercel projects from this repo: deploy
+`apps/workflows` first, then deploy `apps/saas` with
+`WORKFLOW_TRIGGER_URL` pointed at the workflows deployment plus `/api`.
+The buttons below bootstrap those projects, but you still need the
+[self-hosting guide](docs/self-hosting.md#deploying-to-vercel) for the
+Supabase setup and shared secrets.
+
+| Project | Deploy |
+|---|---|
+| Workflows (`apps/workflows`) | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzenzen-sol%2Fwargame-oss%2Ftree%2Fmain%2Fapps%2Fworkflows&project-name=wargame-workflows&repository-name=wargame-oss&env=NEXT_PUBLIC_SUPABASE_URL%2CSUPABASE_SECRET_KEY%2CWORKFLOW_AUTH_TOKEN%2CAPI_KEY_ENCRYPTION_SECRET&envDescription=Follow+the+Wargame+self-hosting+guide+to+create+Supabase+resources+and+shared+secrets+before+deploying.&envLink=https%3A%2F%2Fgithub.com%2Fzenzen-sol%2Fwargame-oss%2Fblob%2Fmain%2Fdocs%2Fself-hosting.md%23deploying-to-vercel) |
+| App (`apps/saas`) | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fzenzen-sol%2Fwargame-oss%2Ftree%2Fmain%2Fapps%2Fsaas&project-name=wargame-app&repository-name=wargame-oss&env=BETTER_AUTH_DATABASE_URL%2CBETTER_AUTH_SECRET%2CNEXT_PUBLIC_SITE_URL%2CAUTH_RESEND_KEY%2CAUTH_EMAIL_FROM%2CNEXT_PUBLIC_SUPABASE_URL%2CNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY%2CSUPABASE_SECRET_KEY%2CSUPABASE_JWT_SECRET%2CWORKFLOW_TRIGGER_URL%2CWORKFLOW_AUTH_TOKEN%2CAPI_KEY_ENCRYPTION_SECRET&envDescription=Follow+the+Wargame+self-hosting+guide+to+create+Supabase+resources+and+shared+secrets+before+deploying.&envLink=https%3A%2F%2Fgithub.com%2Fzenzen-sol%2Fwargame-oss%2Fblob%2Fmain%2Fdocs%2Fself-hosting.md%23deploying-to-vercel) |
+
 ## Run limits
 
 Self-hosted installs run uncapped by default. To bound LLM spend on a
